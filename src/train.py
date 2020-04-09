@@ -53,7 +53,7 @@ log_name = "{}{:02}{:02}_{:02}_{}".format(dt.year, dt.month, dt.day, model_id, m
 log_path = os.path.join(logdir_path, log_name)
 writer = SummaryWriter(log_dir=log_path)
 
-epochs = 20
+epochs = 2
 
 
 def adjust_learning_rate(optimizer, epoch):
