@@ -24,7 +24,7 @@ dataroot = os.path.join(os.path.dirname(base_path), "datasets")
 if not os.path.exists(dataroot):
     os.mkdir(dataroot)
 
-datasets = torchvision.datasets.VOCSegmentation(dataroot, year='2012', image_set='train', download=True, transform=original_transform, target_transform=teacher_transform)
+datasets = torchvision.datasets.VOCSegmentation(dataroot, year='2012', image_set='train', download=False, transform=original_transform, target_transform=teacher_transform)
 
 train_loader = torch.utils.data.DataLoader(datasets, batch_size=4, shuffle=True)
 
@@ -67,7 +67,7 @@ def train(epoch):
         model.train()
         optimizer.zero_grad()
         adjust_learning_rate(optimizer, epoch)
-        data, target = data.cuda(), target.cuda()
+        # data, target = data.cuda(), target.cuda()
         output = model(data)
         loss = criterion(output, target)
         loss.backward()

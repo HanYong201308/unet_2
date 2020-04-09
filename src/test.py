@@ -20,9 +20,9 @@ from models.unet import UNet
 import matplotlib.pyplot as plt
 import numpy as np
 
-model_id = "20190829_00_UNet"
+model_id = "20200404_00_UNet"
 
-checkpoint_path = "./checkpoints/{}/checkpoint.pth.tar".format(model_id)
+checkpoint_path = "../checkpoints/{}/checkpoint.pth.tar".format(model_id)
 
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -34,15 +34,19 @@ datasets = torchvision.datasets.VOCSegmentation(dataroot, year='2012', image_set
 
 train_loader = torch.utils.data.DataLoader(datasets, batch_size=1, shuffle=False)
 
-model = UNet(n_channels=3, n_classes=21).cuda()
+model = UNet(n_channels=3, n_classes=21)#.cuda()
 
 model.load_state_dict(torch.load(checkpoint_path))
 
 model.eval()
 with torch.no_grad():
-    data, target = iter(train_loader).next()
-    data = data.cuda()
-    output = model(data).data  # [4, 21, 512, 512]
+    # data, target = iter(train_loader).next()
+    abab = 0
+    for data, target in train_loader:
+        # output = model(data).data
+        abab += 1
+    # data = data.cuda()
+    # output = model(data).data  # [4, 21, 512, 512]
 
 
 
@@ -63,4 +67,4 @@ def _get_concat_h(img_lst):
 
 
 all_img = _get_concat_h([img, anno_class_img, target])
-all_img.save("/ML/unet/inter_file/test.jpg")
+all_img.save("../inter_file/test.jpg")
