@@ -16,7 +16,8 @@ from modules.loss import CEDiceLoss, BCEDiceLoss
 from modules.datasets import Segmentation_dataset
 from modules.transforms import original_transform, teacher_transform
 from models.unet import UNet
-
+from models.fcn import fcn8s
+from models.segnet import segnet
 base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # /unet
 
 
@@ -38,8 +39,15 @@ train_loader = torch.utils.data.DataLoader(datasets, batch_size=4, shuffle=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = UNet(n_channels=3, n_classes=21).to(device)
 criterion = BCEDiceLoss().to(device)
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+model_fcn8 = fcn8s().to(device)
+criterion_fcn8 = BCEDiceLoss().to(device)
+model_segnet = segnet().to(device)
+criterion_segnet = BCEDiceLoss().to(device)
 
+
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer_fcn8 = optim.Adam(model_fcn8.parameters(), lr=0.001)
+optimizer_segnet = optim.Adam(model_segnet.parameters(), lr=0.001)
 
 # colabは相対パスがいいみたい
 # logdir = "logs"
@@ -62,17 +70,40 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+
 def train(epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         model.train()
+        model_fcn8.train()
+        model_segnet.train()
+
         optimizer.zero_grad()
+        optimizer_fcn8.zero_grad()
+        optimizer_segnet.zero_grad()
+
         adjust_learning_rate(optimizer, epoch)
+        adjust_learning_rate(optimizer_fcn8, epoch)
+        adjust_learning_rate(optimizer_segnet, epoch)
+
         # data, target = data.cuda(), target.cuda()
         output = model(data)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        writer.add_scalar("train_loss", loss.item(), (len(train_loader)*(epoch-1)+batch_idx)) # 675*e+i
+
+        output_fcn8 = model_fcn8(data)
+        loss_fcn8 = criterion_fcn8(output_fcn8, target)
+        loss_fcn8.backward()
+        optimizer_fcn8.step()
+
+        output_segnet = model_segnet(data)
+        loss_segnet = criterion_segnet(output_segnet, target)
+        loss_segnet.backward()
+        optimizer_segnet.step()
+
+        writer.add_scalar("train_loss for Unet", loss.item(), (len(train_loader)*(epoch-1)+batch_idx)) # 675*e+i
+        writer.add_scalar("train_loss for fcn8", loss_fcn8.item(), (len(train_loader)*(epoch-1)+batch_idx)) # 675*e+i
+        writer.add_scalar("train_loss for fcn8", loss_segnet.item(), (len(train_loader)*(epoch-1)+batch_idx)) # 675*e+i
 
         if batch_idx % 20 == 0:
             #validation
@@ -90,12 +121,11 @@ def train(epoch):
             #     epoch,
             #     batch_idx * len(data), len(train_loader.dataset), 100. * batch_idx / len(train_loader),
             #     loss.item(), val_loss))
-            print('Train Epoch: {:>3} [{:>5}/{:>5} ({:>3.0f}%)]\ttrain_loss: {:>2.4f}'.format(
+            print('Train Epoch: {:>3} [{:>5}/{:>5} ({:>3.0f}%)]\ttrain_loss for Unet: {:>2.4f}\t    train_loss for '
+                  'fcn8: {:>2.4f}\t    train_loss for segnet: {:>2.4f}'.format(
                 epoch,
                 batch_idx * len(data), len(train_loader.dataset), 100. * batch_idx / len(train_loader),
-                loss.item()))
-
-
+                loss.item(), loss_fcn8.item(), loss_segnet.item()))
 
 
 def save(epoch):
